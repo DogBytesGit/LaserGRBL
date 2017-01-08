@@ -7,22 +7,63 @@ using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Windows.Forms;
 using CsPotrace;
+using System.Threading;
 
 namespace LaserGRBL.RasterConverter
 {
-	public class ImageProcessor
+	public class ImageProcessor : ICloneable
 	{
+		public delegate void ImageBeginDlg();
+		public static event ImageBeginDlg ImageBegin;
+		
 		public delegate void ImageReadyDlg(Image img);
-		public event ImageReadyDlg ImageReady;
+		public static event ImageReadyDlg ImageReady;
 
-		private System.ComponentModel.BackgroundWorker BW;
-
+		private Image mOriginal;
+		private Bitmap mResized; //syncronized
+		
+		private ImageProcessor Current;
+		private bool mGrayScale;
 		private bool mSuspended;
 		private Control mSincro;
-		private Image mOriginal;
-		private Image mResized;
 		private Size mTargetSize;
 
+		
+		private InterpolationMode mInterpolation = InterpolationMode.HighQualityBicubic;
+		private Tool mTool;
+		private ImageTransform.Formula mFormula;
+		private int mRed;
+		private int mGreen;
+		private int mBlue;
+		private int mContrast;
+		private int mBrightness;
+		private int mThreshold;
+		private bool mUseThreshold;
+		private decimal mQuality;
+		private bool mLinePreview;
+		private decimal mSpotRemoval;
+		private bool mUseSpotRemoval;
+		private decimal mOptimize;
+		private bool mUseOptimize;
+		private decimal mSmoothing;
+		private bool mUseSmootihing;
+		private bool mShowDots;		
+		private bool mShowImage;		
+		private Direction mDirection;
+
+		Thread TH;
+		protected ManualResetEvent MustExit;
+		
+		public object Clone()
+		{
+			ImageProcessor rv = this.MemberwiseClone() as ImageProcessor;
+			rv.TH = null;
+			rv.MustExit = null;
+			rv.mOriginal = null;
+			rv.mResized = mResized.Clone() as Bitmap;
+			return rv;
+		}
+		
 		public enum Tool
 		{ Line2Line, Vectorize }
 		
@@ -31,16 +72,32 @@ namespace LaserGRBL.RasterConverter
 
 		public ImageProcessor(Control sincro, Image source, Size boxSize)
 		{
-			BW = new BackgroundWorker();
-			BW.WorkerSupportsCancellation = true;
-			BW.RunWorkerCompleted += BW_RunWorkerCompleted;
-
-			BW.DoWork += BW_DoWork;
 			mSuspended = true;
 			mSincro = sincro;
 			mOriginal = source;
 			mTargetSize = CalculateResizeToFit(source.Size, boxSize);
-			mResized = ImageTransform.ResizeImage(mOriginal, mTargetSize, false, Interpolation);
+			
+			lock (this)
+			{mResized = ImageTransform.ResizeImage(mOriginal, mTargetSize, false, Interpolation);}
+			
+			mGrayScale = TestGrayScale(mResized);
+		}
+		
+		public bool IsGrayScale
+		{get {return mGrayScale;}}
+		
+		bool TestGrayScale(Bitmap bmp)
+		{
+			for(int x = 0; x < bmp.Width; x+=10)
+			{
+				for(int y = 0; y < bmp.Height; y+=10)
+				{
+					Color c = bmp.GetPixel(x,y);
+					if (c.R != c.G || c.G != c.B)
+						return false;
+				}
+			}
+			return true;
 		}
 
 		public void Suspend()
@@ -57,7 +114,6 @@ namespace LaserGRBL.RasterConverter
 			}
 		}
 
-		private InterpolationMode mInterpolation = InterpolationMode.HighQualityBicubic;
 		public InterpolationMode Interpolation
 		{
 			get{return mInterpolation;}
@@ -66,13 +122,18 @@ namespace LaserGRBL.RasterConverter
 				if (value != mInterpolation)
 				{
 					mInterpolation = value;
-					mResized = ImageTransform.ResizeImage(mOriginal, mTargetSize, false, Interpolation);
+
+					lock (this)
+					{
+						mResized.Dispose();
+						mResized = ImageTransform.ResizeImage(mOriginal, mTargetSize, false, Interpolation);
+					}
+					
 					Refresh();
 				}
 			}
 		}
 		
-		private Tool mTool;
 		public Tool SelectedTool
 		{
 			get { return mTool; }
@@ -86,7 +147,6 @@ namespace LaserGRBL.RasterConverter
 			}
 		}
 
-		private ImageTransform.Formula mFormula;
 		public ImageTransform.Formula Formula
 		{
 			get { return mFormula; }
@@ -100,7 +160,6 @@ namespace LaserGRBL.RasterConverter
 			}
 		}
 
-		private int mRed;
 		public int Red
 		{
 			get { return mRed; }
@@ -114,7 +173,6 @@ namespace LaserGRBL.RasterConverter
 			}
 		}
 
-		private int mGreen;
 		public int Green
 		{
 			get { return mGreen; }
@@ -128,7 +186,6 @@ namespace LaserGRBL.RasterConverter
 			}
 		}
 
-		private int mBlue;
 		public int Blue
 		{
 			get { return mBlue; }
@@ -142,7 +199,6 @@ namespace LaserGRBL.RasterConverter
 			}
 		}
 
-		private int mContrast;
 		public int Contrast
 		{
 			get { return mContrast; }
@@ -156,7 +212,6 @@ namespace LaserGRBL.RasterConverter
 			}
 		}
 
-		private int mBrightness;
 		public int Brightness
 		{
 			get { return mBrightness; }
@@ -170,7 +225,6 @@ namespace LaserGRBL.RasterConverter
 			}
 		}
 
-		private int mThreshold;
 		public int Threshold
 		{
 			get { return mThreshold; }
@@ -184,7 +238,6 @@ namespace LaserGRBL.RasterConverter
 			}
 		}
 
-		private bool mUseThreshold;
 		public bool UseThreshold
 		{
 			get { return mUseThreshold; }
@@ -198,7 +251,6 @@ namespace LaserGRBL.RasterConverter
 			}
 		}
 
-		private decimal mQuality;
 		public decimal Quality
 		{
 			get { return mQuality; }
@@ -212,7 +264,6 @@ namespace LaserGRBL.RasterConverter
 			}
 		}
 
-		private bool mLinePreview;
 		public bool LinePreview
 		{
 			get { return mLinePreview; }
@@ -226,7 +277,7 @@ namespace LaserGRBL.RasterConverter
 			}
 		}
 
-		private decimal mSpotRemoval;
+
 		public decimal SpotRemoval
 		{
 			get { return mSpotRemoval; }
@@ -240,8 +291,6 @@ namespace LaserGRBL.RasterConverter
 			}
 		}
 
-
-		private bool mUseSpotRemoval;
 		public bool UseSpotRemoval
 		{
 			get { return mUseSpotRemoval; }
@@ -255,7 +304,6 @@ namespace LaserGRBL.RasterConverter
 			}
 		}
 
-		private decimal mOptimize;
 		public decimal Optimize
 		{
 			get { return mOptimize; }
@@ -269,7 +317,6 @@ namespace LaserGRBL.RasterConverter
 			}
 		}
 
-		private bool mUseOptimize;
 		public bool UseOptimize
 		{
 			get { return mUseOptimize; }
@@ -283,7 +330,6 @@ namespace LaserGRBL.RasterConverter
 			}
 		}
 
-		private decimal mSmoothing;
 		public decimal Smoothing
 		{
 			get { return mSmoothing; }
@@ -297,7 +343,6 @@ namespace LaserGRBL.RasterConverter
 			}
 		}
 
-		private bool mUseSmootihing;
 		public bool UseSmoothing
 		{
 			get { return mUseSmootihing; }
@@ -311,7 +356,6 @@ namespace LaserGRBL.RasterConverter
 			}
 		}
 
-		private bool mShowDots;
 		public bool ShowDots
 		{
 			get { return mShowDots; }
@@ -325,7 +369,6 @@ namespace LaserGRBL.RasterConverter
 			}
 		}
 
-		private bool mShowImage;
 		public bool ShowImage
 		{
 			get { return mShowImage; }
@@ -338,8 +381,7 @@ namespace LaserGRBL.RasterConverter
 				}
 			}
 		}
-		
-		private Direction mDirection;
+
 		public Direction LineDirection
 		{
 			get { return mDirection; }
@@ -357,140 +399,140 @@ namespace LaserGRBL.RasterConverter
 		{
 			if (mSuspended)
 				return;
-
-			if (BW.IsBusy)
-				BW.CancelAsync();
-			else
-				BW.RunWorkerAsync();
+			
+			if (Current != null)
+				Current.AbortThread();
+			
+			Current = (ImageProcessor)this.Clone();
+			Current.RunThread();
 		}
 		
-		public void Dispose()
+		private void RunThread()
 		{
-			BW.RunWorkerCompleted -= BW_RunWorkerCompleted;
-			BW.DoWork -= BW_DoWork;
-			
-			if (BW.IsBusy)
-				BW.CancelAsync();	
-	
-			BW.Dispose();
+			MustExit = new ManualResetEvent(false);
+			TH = new Thread(DoWork);
+			TH.Name = "Image Processor";
+			TH.Start();
+			RiseBegin();
 		}
+		
+		private void AbortThread()
+		{
+			if ((TH != null) && TH.ThreadState != System.Threading.ThreadState.Stopped) 
+			{
+				MustExit.Set();
 
+				if (!object.ReferenceEquals(System.Threading.Thread.CurrentThread, TH)) 
+				{
+					TH.Join(100);
+					if (TH != null && TH.ThreadState != System.Threading.ThreadState.Stopped) {
+						System.Diagnostics.Debug.WriteLine(string.Format("Devo forzare la terminazione del Thread '{0}'", TH.Name));
+						TH.Abort();
+					}
+				}
+				else 
+				{
+					System.Diagnostics.Debug.WriteLine(string.Format("ATTENZIONE! Chiamata rientrante a thread stop '{0}'", TH.Name));
+				}
+			}
+			
+			TH = null;
+			MustExit = null;
+			mResized.Dispose();
+		}
+		
+		protected bool MustExitTH
+		{get{return MustExit != null && MustExit.WaitOne(0, false);}}
+		
+		private void RiseBegin()
+		{
+			if (ImageBegin != null)
+				mSincro.Invoke(ImageBegin);
+		}
+		
 		private void RiseReady(Image img)
 		{
 			if (ImageReady != null)
 				mSincro.Invoke(ImageReady, img);
 		}
 
-		void BW_DoWork(object sender, DoWorkEventArgs e)
+		void DoWork()
 		{
-			e.Cancel = true;
 			try
 			{
-				Bitmap bmp = ProduceBitmap(mResized, mTargetSize, false); //non usare using perché poi viene assegnato al visualizzatore 
-
-				if (!MustExit)
+				using (Bitmap bmp = ProduceBitmap(mResized, mTargetSize))
 				{
-					if (SelectedTool == Tool.Line2Line)
-						PreviewLineByLine(bmp);
-					else if (SelectedTool == Tool.Vectorize)
-						PreviewVector(bmp);
-
-					if (!MustExit)
+					if (!MustExitTH)
 					{
-						e.Result = bmp;
-						e.Cancel = false;
+						if (SelectedTool == Tool.Line2Line)
+							PreviewLineByLine(bmp);
+						else if (SelectedTool == Tool.Vectorize)
+							PreviewVector(bmp);
 					}
+					
+					if (!MustExitTH)
+						RiseReady(bmp);
 				}
 			}
-			catch {}
+			catch(Exception ex) 
+			{
+				System.Diagnostics.Debug.WriteLine(ex.ToString());
+			}
+			finally
+			{
+				mResized.Dispose();
+			}
 		}
 		
 		public Bitmap CreateTarget(Size size)
 		{
-			return ProduceBitmap(mOriginal, size, true); //non usare using perché poi viene assegnato al postprocessing 
+			return ProduceBitmap(mOriginal, size); //non usare using perché poi viene assegnato al postprocessing 
 		}
 
-		void BW_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-		{
-			if (!e.Cancelled)
-				RiseReady(e.Result as Image);
-			else
-				Refresh();
-		}
-
-		private bool MustExit
-		{get { return BW.CancellationPending; } }
-
-		private Bitmap ProduceBitmap(Image img, Size size, bool force)
+		private Bitmap ProduceBitmap(Image img, Size size)
 		{
 			using (Bitmap resized = ImageTransform.ResizeImage(img, size, false, Interpolation))
-			{
-				if (MustExit && !force)
-					return null;
-				else
-					using (Bitmap grayscale = ImageTransform.GrayScale(resized, Red / 100.0F, Green / 100.0F, Blue / 100.0F, -((100 - Brightness) / 100.0F), (Contrast / 100.0F), Formula))
-					{ return ImageTransform.Threshold(grayscale, Threshold / 100.0F, UseThreshold); }
-			}
+				using (Bitmap grayscale = ImageTransform.GrayScale(resized, Red / 100.0F, Green / 100.0F, Blue / 100.0F, -((100 - Brightness) / 100.0F), (Contrast / 100.0F), IsGrayScale ? ImageTransform.Formula.SimpleAverage : Formula))
+					return ImageTransform.Threshold(grayscale, Threshold / 100.0F, UseThreshold);
 		}
 
 		private void PreviewLineByLine(Bitmap bmp)
 		{
-			if (LinePreview)
+			if (LinePreview && !MustExitTH)
 			{
 				using (Graphics g = Graphics.FromImage(bmp))
 				{
 					g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
-					
 					if (LineDirection == Direction.Horizontal)
 					{
-						for (int Y = 0; Y < bmp.Height && !MustExit; Y++)
+						for (int Y = 0; Y < bmp.Height && !MustExitTH; Y++)
 						{
-							using (Pen mark = new Pen(Color.FromArgb(0, 255, 255, 255), 1F))
+							using (Pen p = new Pen(Color.FromArgb(200, 255, 255, 255), 1F))
 							{
-								using (Pen nomark = new Pen(Color.FromArgb(255, 255, 255, 255), 1F))
-								{
-									if (Y % 2 == 0)
-										g.DrawLine(mark, 0, Y, bmp.Width, Y);
-									else
-										g.DrawLine(nomark, 0, Y, bmp.Width, Y);
-								}
+								if (Y % 2 == 0)
+									g.DrawLine(p, 0, Y, bmp.Width, Y);
 							}
 						}
 					}
 					else if (LineDirection == Direction.Vertical)
 					{
-						for (int X = 0; X < bmp.Width && !MustExit; X++)
+						for (int X = 0; X < bmp.Width && !MustExitTH; X++)
 						{
-							using (Pen mark = new Pen(Color.FromArgb(0, 255, 255, 255), 1F))
+							using (Pen p = new Pen(Color.FromArgb(200, 255, 255, 255), 1F))
 							{
-								using (Pen nomark = new Pen(Color.FromArgb(255, 255, 255, 255), 1F))
-								{
-									if (X % 2 == 0)
-										g.DrawLine(mark, X, 0, X, bmp.Height);
-									else
-										g.DrawLine(nomark, X, 0, X, bmp.Height);
-								}
+								if (X % 2 == 0)
+									g.DrawLine(p, X, 0, X, bmp.Height);
 							}
 						}
 					}
 					else if (LineDirection == Direction.Diagonal)
 					{
-						for (int I = 0; I < bmp.Width + bmp.Height -1 && !MustExit; I++)
+						for (int I = 0; I < bmp.Width + bmp.Height -1 && !MustExitTH ; I++)
 						{
-							using (Pen mark = new Pen(Color.FromArgb(0, 255, 255, 255), 1F))
+							using (Pen p = new Pen(Color.FromArgb(255, 255, 255, 255), 1F))
 							{
-								using (Pen nomark = new Pen(Color.FromArgb(255, 255, 255, 255), 1F))
-								{
-									using (Pen middlemark = new Pen(Color.FromArgb(127, 255, 255, 255), 1F))
-									{
-										if (I % 3 == 0)
-											g.DrawLine(mark, 0, bmp.Height-I, I, bmp.Height);
-										else if (I % 3 == 1)
-											g.DrawLine(nomark, 0, bmp.Height-I, I, bmp.Height);
-										else
-											g.DrawLine(middlemark, 0, bmp.Height-I, I, bmp.Height);
-									}
-								}
+									if (I % 3 == 0)
+										g.DrawLine(p, 0, bmp.Height-I, I, bmp.Height);
 							}
 						}						
 					}
@@ -510,22 +552,27 @@ namespace LaserGRBL.RasterConverter
 			Potrace.curveoptimizing = UseOptimize; //optimize the path p, replacing sequences of Bezier segments by a single segment when possible.
 
 			bool[,] Matrix = Potrace.BitMapToBinary(bmp, 125);
+			
+			if (MustExitTH)
+				return;
+			
 			Potrace.potrace_trace(Matrix, ListOfCurveArray);
 
-			if (!MustExit)
+			if (MustExitTH)
+				return;
+			
+			using (Graphics g = Graphics.FromImage(bmp))
 			{
-				using (Graphics g = Graphics.FromImage(bmp))
+				if (!ShowImage)
+					g.Clear(Color.White);
+				else
 				{
-					if (!ShowImage)
-						g.Clear(Color.White);
-					else
-					{
-						using (Brush b = new SolidBrush(Color.FromArgb(220, Color.White)))
-							g.FillRectangle(b, 0, 0, bmp.Width, bmp.Height);
-					}
+					using (Brush b = new SolidBrush(Color.FromArgb(220, Color.White)))
+						g.FillRectangle(b, 0, 0, bmp.Width, bmp.Height);
 				}
 			}
-			if (!MustExit)
+
+			if (!MustExitTH)
 				DrawVector(ListOfCurveArray, bmp);
 		}
 
@@ -542,14 +589,14 @@ namespace LaserGRBL.RasterConverter
 
 
 			GraphicsPath gp = new GraphicsPath();
-			for (int i = 0; i < ListOfCurveArray.Count; i++)
+			for (int i = 0; i < ListOfCurveArray.Count && !MustExitTH; i++)
 			{
 				ArrayList CurveArray = (ArrayList)ListOfCurveArray[i];
 				GraphicsPath Contour = null;
 				GraphicsPath Hole = null;
 				GraphicsPath Current = null;
 
-				for (int j = 0; j < CurveArray.Count && !MustExit; j++)
+				for (int j = 0; j < CurveArray.Count && !MustExitTH; j++)
 				{
 					if (j == 0)
 					{
@@ -567,7 +614,7 @@ namespace LaserGRBL.RasterConverter
 					float factor = 1;
 					if (true)
 						factor = 1;
-					for (int k = 0; k < Curves.Length && !MustExit; k++)
+					for (int k = 0; k < Curves.Length && !MustExitTH; k++)
 					{
 						if (Curves[k].Kind == Potrace.CurveKind.Bezier)
 							Current.AddBezier((float)Curves[k].A.X * factor, (float)Curves[k].A.Y * factor, (float)Curves[k].ControlPointA.X * factor, (float)Curves[k].ControlPointA.Y * factor,
@@ -581,10 +628,10 @@ namespace LaserGRBL.RasterConverter
 				gp.AddPath(Contour, false);
 			}
 
-			if (!MustExit)
+			if(!MustExitTH)
 				g.DrawPath(Pens.Black, gp); //draw path
 
-			if (ShowDots && !MustExit)
+			if (ShowDots && !MustExitTH)
 				DrawPoints(ListOfCurveArray, bmp); //draw points
 		}
 
@@ -592,13 +639,13 @@ namespace LaserGRBL.RasterConverter
 		{
 			if (ListOfCurveArray == null) return;
 			Graphics g = Graphics.FromImage(bmp);
-			for (int i = 0; i < ListOfCurveArray.Count && !MustExit; i++)
+			for (int i = 0; i < ListOfCurveArray.Count && !MustExitTH; i++)
 			{
 				ArrayList CurveArray = (ArrayList)ListOfCurveArray[i];
-				for (int j = 0; j < CurveArray.Count && !MustExit; j++)
+				for (int j = 0; j < CurveArray.Count && !MustExitTH; j++)
 				{
 					Potrace.Curve[] Curves = (Potrace.Curve[])CurveArray[j];
-					for (int k = 0; k < Curves.Length && !MustExit; k++)
+					for (int k = 0; k < Curves.Length && !MustExitTH; k++)
 					{
 						g.FillRectangle(Brushes.Red, (float)((Curves[k].A.X) - 0.5), (float)((Curves[k].A.Y) - 0.5), 1, 1);
 					}
@@ -622,6 +669,6 @@ namespace LaserGRBL.RasterConverter
 		}
 
 
-		public Image Original { get {return mResized;}}
+		public Bitmap Original { get {return mResized;}}
 	}
 }

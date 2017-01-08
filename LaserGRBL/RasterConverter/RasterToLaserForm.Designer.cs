@@ -28,9 +28,11 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
+			this.components = new System.ComponentModel.Container();
 			this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
 			this.Tp = new System.Windows.Forms.TabControl();
 			this.TpPreview = new System.Windows.Forms.TabPage();
+			this.WB = new LaserGRBL.UserControls.WaitingProgressBar();
 			this.PbConverted = new System.Windows.Forms.PictureBox();
 			this.TpOriginal = new System.Windows.Forms.TabPage();
 			this.PbOriginal = new System.Windows.Forms.PictureBox();
@@ -54,13 +56,13 @@
 			this.groupBox1 = new System.Windows.Forms.GroupBox();
 			this.tableLayoutPanel2 = new System.Windows.Forms.TableLayoutPanel();
 			this.CbResize = new System.Windows.Forms.ComboBox();
-			this.label17 = new System.Windows.Forms.Label();
-			this.label1 = new System.Windows.Forms.Label();
+			this.LbThreshold = new System.Windows.Forms.Label();
+			this.LblGrayscale = new System.Windows.Forms.Label();
 			this.CbMode = new System.Windows.Forms.ComboBox();
 			this.TBRed = new LaserGRBL.UserControls.ColorSlider();
-			this.label14 = new System.Windows.Forms.Label();
-			this.label16 = new System.Windows.Forms.Label();
-			this.label15 = new System.Windows.Forms.Label();
+			this.LblRed = new System.Windows.Forms.Label();
+			this.LblBlue = new System.Windows.Forms.Label();
+			this.LblGreen = new System.Windows.Forms.Label();
 			this.label2 = new System.Windows.Forms.Label();
 			this.TBGreen = new LaserGRBL.UserControls.ColorSlider();
 			this.TbBright = new LaserGRBL.UserControls.ColorSlider();
@@ -114,6 +116,7 @@
 			this.IIMaxPower = new LaserGRBL.UserControls.IntegerInput.IntegerInputRanged();
 			this.label18 = new System.Windows.Forms.Label();
 			this.TxtLaserOn = new System.Windows.Forms.TextBox();
+			this.WT = new System.Windows.Forms.Timer(this.components);
 			this.tableLayoutPanel1.SuspendLayout();
 			this.Tp.SuspendLayout();
 			this.TpPreview.SuspendLayout();
@@ -177,6 +180,7 @@
 			// 
 			// TpPreview
 			// 
+			this.TpPreview.Controls.Add(this.WB);
 			this.TpPreview.Controls.Add(this.PbConverted);
 			this.TpPreview.Location = new System.Drawing.Point(4, 22);
 			this.TpPreview.Name = "TpPreview";
@@ -185,6 +189,28 @@
 			this.TpPreview.TabIndex = 0;
 			this.TpPreview.Text = "Preview";
 			this.TpPreview.UseVisualStyleBackColor = true;
+			// 
+			// WB
+			// 
+			this.WB.BarColor = System.Drawing.Color.SteelBlue;
+			this.WB.BorderColor = System.Drawing.Color.Black;
+			this.WB.BouncingMode = LaserGRBL.UserControls.WaitingProgressBar.BouncingModeEnum.PingPong;
+			this.WB.DrawProgressString = false;
+			this.WB.FillColor = System.Drawing.Color.White;
+			this.WB.FillStyle = LaserGRBL.UserControls.FillStyles.Solid;
+			this.WB.Interval = 25D;
+			this.WB.Location = new System.Drawing.Point(592, 501);
+			this.WB.Maximum = 20D;
+			this.WB.Minimum = 0D;
+			this.WB.Name = "WB";
+			this.WB.ProgressStringDecimals = 0;
+			this.WB.Reverse = true;
+			this.WB.Running = false;
+			this.WB.Size = new System.Drawing.Size(65, 16);
+			this.WB.Step = 1D;
+			this.WB.TabIndex = 1;
+			this.WB.ThrowExceprion = false;
+			this.WB.Value = 0D;
 			// 
 			// PbConverted
 			// 
@@ -514,13 +540,13 @@
 			this.tableLayoutPanel2.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
 			this.tableLayoutPanel2.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
 			this.tableLayoutPanel2.Controls.Add(this.CbResize, 1, 0);
-			this.tableLayoutPanel2.Controls.Add(this.label17, 0, 8);
-			this.tableLayoutPanel2.Controls.Add(this.label1, 0, 1);
+			this.tableLayoutPanel2.Controls.Add(this.LbThreshold, 0, 8);
+			this.tableLayoutPanel2.Controls.Add(this.LblGrayscale, 0, 1);
 			this.tableLayoutPanel2.Controls.Add(this.CbMode, 1, 1);
 			this.tableLayoutPanel2.Controls.Add(this.TBRed, 1, 2);
-			this.tableLayoutPanel2.Controls.Add(this.label14, 0, 2);
-			this.tableLayoutPanel2.Controls.Add(this.label16, 0, 4);
-			this.tableLayoutPanel2.Controls.Add(this.label15, 0, 3);
+			this.tableLayoutPanel2.Controls.Add(this.LblRed, 0, 2);
+			this.tableLayoutPanel2.Controls.Add(this.LblBlue, 0, 4);
+			this.tableLayoutPanel2.Controls.Add(this.LblGreen, 0, 3);
 			this.tableLayoutPanel2.Controls.Add(this.label2, 0, 5);
 			this.tableLayoutPanel2.Controls.Add(this.TBGreen, 1, 3);
 			this.tableLayoutPanel2.Controls.Add(this.TbBright, 1, 5);
@@ -558,25 +584,26 @@
 			this.CbResize.TabIndex = 17;
 			this.CbResize.SelectedIndexChanged += new System.EventHandler(this.CbResizeSelectedIndexChanged);
 			// 
-			// label17
+			// LbThreshold
 			// 
-			this.label17.Anchor = System.Windows.Forms.AnchorStyles.Left;
-			this.label17.AutoSize = true;
-			this.label17.Location = new System.Drawing.Point(3, 219);
-			this.label17.Name = "label17";
-			this.label17.Size = new System.Drawing.Size(54, 13);
-			this.label17.TabIndex = 13;
-			this.label17.Text = "Threshold";
+			this.LbThreshold.Anchor = System.Windows.Forms.AnchorStyles.Left;
+			this.LbThreshold.AutoSize = true;
+			this.LbThreshold.Location = new System.Drawing.Point(3, 219);
+			this.LbThreshold.Name = "LbThreshold";
+			this.LbThreshold.Size = new System.Drawing.Size(54, 13);
+			this.LbThreshold.TabIndex = 13;
+			this.LbThreshold.Text = "Threshold";
+			this.LbThreshold.Visible = false;
 			// 
-			// label1
+			// LblGrayscale
 			// 
-			this.label1.Anchor = System.Windows.Forms.AnchorStyles.Left;
-			this.label1.AutoSize = true;
-			this.label1.Location = new System.Drawing.Point(3, 34);
-			this.label1.Name = "label1";
-			this.label1.Size = new System.Drawing.Size(54, 13);
-			this.label1.TabIndex = 0;
-			this.label1.Text = "Grayscale";
+			this.LblGrayscale.Anchor = System.Windows.Forms.AnchorStyles.Left;
+			this.LblGrayscale.AutoSize = true;
+			this.LblGrayscale.Location = new System.Drawing.Point(3, 34);
+			this.LblGrayscale.Name = "LblGrayscale";
+			this.LblGrayscale.Size = new System.Drawing.Size(54, 13);
+			this.LblGrayscale.TabIndex = 0;
+			this.LblGrayscale.Text = "Grayscale";
 			// 
 			// CbMode
 			// 
@@ -610,38 +637,42 @@
 			this.TBRed.ThumbRoundRectSize = new System.Drawing.Size(6, 6);
 			this.TBRed.ThumbSize = 10;
 			this.TBRed.Value = 100;
+			this.TBRed.Visible = false;
 			this.TBRed.ValueChanged += new System.EventHandler(this.TBRed_ValueChanged);
 			this.TBRed.DoubleClick += new System.EventHandler(this.OnRGBCBDoubleClick);
 			// 
-			// label14
+			// LblRed
 			// 
-			this.label14.Anchor = System.Windows.Forms.AnchorStyles.Left;
-			this.label14.AutoSize = true;
-			this.label14.Location = new System.Drawing.Point(3, 61);
-			this.label14.Name = "label14";
-			this.label14.Size = new System.Drawing.Size(27, 13);
-			this.label14.TabIndex = 6;
-			this.label14.Text = "Red";
+			this.LblRed.Anchor = System.Windows.Forms.AnchorStyles.Left;
+			this.LblRed.AutoSize = true;
+			this.LblRed.Location = new System.Drawing.Point(3, 61);
+			this.LblRed.Name = "LblRed";
+			this.LblRed.Size = new System.Drawing.Size(27, 13);
+			this.LblRed.TabIndex = 6;
+			this.LblRed.Text = "Red";
+			this.LblRed.Visible = false;
 			// 
-			// label16
+			// LblBlue
 			// 
-			this.label16.Anchor = System.Windows.Forms.AnchorStyles.Left;
-			this.label16.AutoSize = true;
-			this.label16.Location = new System.Drawing.Point(3, 115);
-			this.label16.Name = "label16";
-			this.label16.Size = new System.Drawing.Size(28, 13);
-			this.label16.TabIndex = 11;
-			this.label16.Text = "Blue";
+			this.LblBlue.Anchor = System.Windows.Forms.AnchorStyles.Left;
+			this.LblBlue.AutoSize = true;
+			this.LblBlue.Location = new System.Drawing.Point(3, 115);
+			this.LblBlue.Name = "LblBlue";
+			this.LblBlue.Size = new System.Drawing.Size(28, 13);
+			this.LblBlue.TabIndex = 11;
+			this.LblBlue.Text = "Blue";
+			this.LblBlue.Visible = false;
 			// 
-			// label15
+			// LblGreen
 			// 
-			this.label15.Anchor = System.Windows.Forms.AnchorStyles.Left;
-			this.label15.AutoSize = true;
-			this.label15.Location = new System.Drawing.Point(3, 88);
-			this.label15.Name = "label15";
-			this.label15.Size = new System.Drawing.Size(36, 13);
-			this.label15.TabIndex = 8;
-			this.label15.Text = "Green";
+			this.LblGreen.Anchor = System.Windows.Forms.AnchorStyles.Left;
+			this.LblGreen.AutoSize = true;
+			this.LblGreen.Location = new System.Drawing.Point(3, 88);
+			this.LblGreen.Name = "LblGreen";
+			this.LblGreen.Size = new System.Drawing.Size(36, 13);
+			this.LblGreen.TabIndex = 8;
+			this.LblGreen.Text = "Green";
+			this.LblGreen.Visible = false;
 			// 
 			// label2
 			// 
@@ -672,6 +703,7 @@
 			this.TBGreen.ThumbRoundRectSize = new System.Drawing.Size(6, 6);
 			this.TBGreen.ThumbSize = 10;
 			this.TBGreen.Value = 100;
+			this.TBGreen.Visible = false;
 			this.TBGreen.ValueChanged += new System.EventHandler(this.TBGreen_ValueChanged);
 			this.TBGreen.DoubleClick += new System.EventHandler(this.OnRGBCBDoubleClick);
 			// 
@@ -720,6 +752,7 @@
 			this.TBBlue.ThumbRoundRectSize = new System.Drawing.Size(6, 6);
 			this.TBBlue.ThumbSize = 10;
 			this.TBBlue.Value = 100;
+			this.TBBlue.Visible = false;
 			this.TBBlue.ValueChanged += new System.EventHandler(this.TBBlue_ValueChanged);
 			this.TBBlue.DoubleClick += new System.EventHandler(this.OnRGBCBDoubleClick);
 			// 
@@ -766,7 +799,6 @@
 			this.TbThreshold.BorderRoundRectSize = new System.Drawing.Size(8, 8);
 			this.TbThreshold.ElapsedInnerColor = System.Drawing.Color.White;
 			this.TbThreshold.ElapsedOuterColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
-			this.TbThreshold.Enabled = false;
 			this.TbThreshold.LargeChange = ((uint)(5u));
 			this.TbThreshold.Location = new System.Drawing.Point(63, 213);
 			this.TbThreshold.Margin = new System.Windows.Forms.Padding(1);
@@ -776,6 +808,7 @@
 			this.TbThreshold.TabIndex = 14;
 			this.TbThreshold.ThumbRoundRectSize = new System.Drawing.Size(6, 6);
 			this.TbThreshold.ThumbSize = 10;
+			this.TbThreshold.Visible = false;
 			this.TbThreshold.ValueChanged += new System.EventHandler(this.TbThreshold_ValueChanged);
 			this.TbThreshold.DoubleClick += new System.EventHandler(this.OnThresholdDoubleClick);
 			// 
@@ -957,9 +990,9 @@
 			this.tableLayoutPanel4.SetColumnSpan(this.RbVectorize, 3);
 			this.RbVectorize.Location = new System.Drawing.Point(3, 26);
 			this.RbVectorize.Name = "RbVectorize";
-			this.RbVectorize.Size = new System.Drawing.Size(72, 17);
+			this.RbVectorize.Size = new System.Drawing.Size(164, 17);
 			this.RbVectorize.TabIndex = 1;
-			this.RbVectorize.Text = "Vectorize!";
+			this.RbVectorize.Text = "Vectorize! [EXPERIMENTAL]";
 			this.RbVectorize.UseVisualStyleBackColor = true;
 			this.RbVectorize.CheckedChanged += new System.EventHandler(this.RbVectorize_CheckedChanged);
 			// 
@@ -1404,6 +1437,11 @@
 			this.TxtLaserOn.TabIndex = 20;
 			this.TxtLaserOn.Text = "M3";
 			// 
+			// WT
+			// 
+			this.WT.Interval = 50;
+			this.WT.Tick += new System.EventHandler(this.WTTick);
+			// 
 			// RasterToLaserForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -1478,7 +1516,7 @@
 		private System.Windows.Forms.GroupBox groupBox1;
 		private System.Windows.Forms.GroupBox groupBox2;
 		private System.Windows.Forms.TableLayoutPanel tableLayoutPanel2;
-		private System.Windows.Forms.Label label1;
+		private System.Windows.Forms.Label LblGrayscale;
 		private System.Windows.Forms.Label label2;
 		private System.Windows.Forms.ComboBox CbMode;
 		private UserControls.ColorSlider TbBright;
@@ -1497,13 +1535,13 @@
 		private UserControls.IntegerInput.IntegerInputRanged IISizeW;
 		private UserControls.IntegerInput.IntegerInputRanged IISizeH;
 		private UserControls.ColorSlider TBRed;
-		private System.Windows.Forms.Label label14;
+		private System.Windows.Forms.Label LblRed;
 		private UserControls.ColorSlider TBGreen;
-		private System.Windows.Forms.Label label15;
-		private System.Windows.Forms.Label label16;
+		private System.Windows.Forms.Label LblGreen;
+		private System.Windows.Forms.Label LblBlue;
 		private UserControls.ColorSlider TBBlue;
 		private System.Windows.Forms.CheckBox CbLinePreview;
-		private System.Windows.Forms.Label label17;
+		private System.Windows.Forms.Label LbThreshold;
 		private UserControls.ColorSlider TbThreshold;
 		private System.Windows.Forms.CheckBox CbThreshold;
 		private System.Windows.Forms.GroupBox GbLineToLineOptions;
@@ -1555,5 +1593,7 @@
 		private System.Windows.Forms.Label label8;
 		private System.Windows.Forms.ComboBox CbResize;
 		private System.Windows.Forms.Label label28;
+		private LaserGRBL.UserControls.WaitingProgressBar WB;
+		private System.Windows.Forms.Timer WT;
 	}
 }

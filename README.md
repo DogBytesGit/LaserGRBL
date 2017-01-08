@@ -4,24 +4,25 @@ Laser optimized GUI for [GRBL](https://github.com/grbl/grbl/wiki)
 LaserGRBL is a Windows GUI for [GRBL](https://github.com/grbl/grbl/wiki). Unlike other GUI LaserGRBL it is specifically developed for use with laser cutter and engraver.
 LaserGRBL is compatible with [Grbl v0.9](https://github.com/grbl/grbl/) and [Grbl v1.1](https://github.com/gnea/grbl/)
 
-### Download
-
 All downloads available at https://github.com/arkypita/LaserGRBL/releases
+
+### Support and Donation
+
+Do you like LaserGRBL? Support development with your donation!
+
+[![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=mlpita%40bergamo3%2eit&lc=US&item_name=LaserGRBL&item_number=lasergrbl&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted)
 
 ### Existing Features
 
 - GCode file loading with engraving/cutting job preview (with alpha blending for grayscale engraving)
-- Image import (jpg, bmp...) and line by line GCode generation (horizontal, vertical, and diagonal).
+- Image import (jpg, bmp...) with line by line GCode generation (horizontal, vertical, and diagonal).
+- Image import (jpg, bmp...) with Vectorization! [Experimental]
 - Grbl Configuration Import/Export
 - Configuration, Alarm and Error codes decoding for Grbl v1.1 (with description tooltip)
 - Homing button, Feed Hold button, Resume button and Grbl Reset button
 - Job time preview and realtime projection
 - Jogging (for any Grbl version)
 - Feed overrides (for Grbl > v1.1) with easy-to-use interface
-
-### Missing Features
-
-- As claim to be laser optimized Z info are ignored when drawing preview!
 
 #### Screenshot
 
@@ -32,16 +33,6 @@ All downloads available at https://github.com/arkypita/LaserGRBL/releases
 ![Alpha](https://cloud.githubusercontent.com/assets/8782035/21351296/1df460c2-c6bc-11e6-8eee-4612bb7978fa.jpg)
 
 
-
-### Suggested GCODE Generator
-
-LaserGRBL has its own image import, but if you need more power we suggest to use [Inkscape](https://inkscape.org/) to draw your vector files and vectorize bitmap.
-
-Inkscape has two interesting GCODE plugin:
-- [Raster 2 Laser GCode generator](https://github.com/305engineering/Inkscape) for raster engraving
-- [J Tech Photonics Laser Tool](https://jtechphotonics.com/?page_id=2012) for vector engraving/cutting
-
-More suggestion about GCODE Inkscape extension can be found searching on [YouTube](https://www.youtube.com/results?search_query=inkscape+laser)
 
 ### Compiling
 
@@ -57,3 +48,7 @@ LaserGRBL contains some code from:
 - [DockPanel Suite](https://github.com/dockpanelsuite/dockpanelsuite) - Copyright (c) 2007 Weifen Luo (email: weifenluo@yahoo.com).
 - [ColorSlider](https://www.codeproject.com/articles/17395/owner-drawn-trackbar-slider) - Copyright Michal Brylka
 - [CsPotrace](https://github.com/Invenietis/PoTrace) - Copyright Olivier Spinelli
+- [Bezier2Biarc](https://github.com/domoszlai/bezier2biarc) - Copyright Laszlo
+
+
+

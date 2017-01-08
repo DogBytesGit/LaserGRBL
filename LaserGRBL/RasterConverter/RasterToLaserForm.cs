@@ -25,12 +25,13 @@ namespace LaserGRBL.RasterConverter
 
 			IP = new ImageProcessor(this,  Image.FromFile(filename), PbConverted.Size);
 			PbOriginal.Image = IP.Original;
-
-			IP.ImageReady += OnImageReady;
+			ImageProcessor.ImageReady += OnImageReady;
+			ImageProcessor.ImageBegin += OnImageBegin;
+			
+			LblGrayscale.Visible = CbMode.Visible = !IP.IsGrayScale;
 			
 			CbResize.SuspendLayout();
 			CbResize.Items.Add(InterpolationMode.HighQualityBicubic);
-			CbResize.Items.Add(InterpolationMode.HighQualityBilinear);
 			CbResize.Items.Add(InterpolationMode.NearestNeighbor);
 			CbResize.ResumeLayout();
 			CbMode.SuspendLayout();
@@ -47,15 +48,29 @@ namespace LaserGRBL.RasterConverter
 			
 			LoadSettings();
 		}
-
+		
+		void OnImageBegin()
+		{
+			WT.Enabled = true;
+		}
 		void OnImageReady(Image img)
 		{
 			Image old = PbConverted.Image;
-			PbConverted.Image = img;
+			PbConverted.Image = img.Clone() as Image;
 			if (old != null)
 				old.Dispose();
+			WT.Enabled = false;
+			WB.Visible = false;
+			WB.Running = false;
 		}
-
+		
+		void WTTick(object sender, EventArgs e)
+		{
+			WT.Enabled = false;
+			WB.Visible = true;
+			WB.Running = true;
+		}
+		
 		internal static void CreateAndShowDialog(GrblFile file, string filename)
 		{
 			RasterToLaserForm f = new RasterToLaserForm(file, filename);
@@ -71,6 +86,9 @@ namespace LaserGRBL.RasterConverter
 
 		void BtnCreateClick(object sender, EventArgs e)
 		{
+			Cursor = Cursors.WaitCursor;
+			this.Enabled = false;
+			
 			int H = IISizeH.CurrentValue * (int)UDQuality.Value;
 			int W = IISizeW.CurrentValue * (int)UDQuality.Value;
 
@@ -79,14 +97,20 @@ namespace LaserGRBL.RasterConverter
 			if (RbLineToLineTracing.Checked)
 			{
 				using (Bitmap bmp = IP.CreateTarget(new Size(IISizeW.CurrentValue * (int)IP.Quality, IISizeH.CurrentValue * (int)IP.Quality)))
-					mFile.LoadImage(bmp, mFileName, (int)UDQuality.Value, IIOffsetX.CurrentValue, IIOffsetY.CurrentValue, IIMarkSpeed.CurrentValue, IITravelSpeed.CurrentValue, IIMinPower.CurrentValue, IIMaxPower.CurrentValue, TxtLaserOn.Text, TxtLaserOff.Text, (ImageProcessor.Direction)CbDirections.SelectedItem);
+					mFile.LoadImageL2L(bmp, mFileName, (int)UDQuality.Value, IIOffsetX.CurrentValue, IIOffsetY.CurrentValue, IIMarkSpeed.CurrentValue, IITravelSpeed.CurrentValue, IIMinPower.CurrentValue, IIMaxPower.CurrentValue, TxtLaserOn.Text, TxtLaserOff.Text, (ImageProcessor.Direction)CbDirections.SelectedItem);
 			}
 			else if (RbVectorize.Checked)
 			{
-				System.Windows.Forms.MessageBox.Show("Not implemented yet!");
-				return;
+				//scale the image to be about 1000px wide
+				double potraceRes = 1000.0 / IISizeW.CurrentValue ;
+				Size pixelSize = new Size((int)(IISizeW.CurrentValue * potraceRes), (int)(IISizeH.CurrentValue * potraceRes));
+				
+				using (Bitmap bmp = IP.CreateTarget(pixelSize))
+					mFile.LoadImagePotrace(bmp, mFileName, IIOffsetX.CurrentValue, IIOffsetY.CurrentValue, IIMarkSpeed.CurrentValue, IITravelSpeed.CurrentValue, IIMinPower.CurrentValue, IIMaxPower.CurrentValue, TxtLaserOn.Text, TxtLaserOff.Text, CbSpotRemoval.Checked, (int)UDSpotRemoval.Value, CbSmoothing.Checked, UDSmoothing.Value, CbOptimize.Checked, UDOptimize.Value, potraceRes);
 			}
 
+			Cursor = Cursors.Default;
+			
 			Close();
 		}
 
@@ -187,7 +211,14 @@ namespace LaserGRBL.RasterConverter
 		{((UserControls.ColorSlider)sender).Value = 50;}
 
 		private void CbMode_SelectedIndexChanged(object sender, EventArgs e)
-		{ IP.Formula = (ImageTransform.Formula)CbMode.SelectedItem; }
+		{ 
+			IP.Formula = (ImageTransform.Formula)CbMode.SelectedItem;
+
+			SuspendLayout();
+			TBRed.Visible = TBGreen.Visible = TBBlue.Visible = (IP.Formula == ImageTransform.Formula.Custom && !IP.IsGrayScale);
+			LblRed.Visible = LblGreen.Visible = LblBlue.Visible = (IP.Formula == ImageTransform.Formula.Custom && !IP.IsGrayScale);
+			ResumeLayout();
+		}
 
 		private void TBRed_ValueChanged(object sender, EventArgs e)
 		{ IP.Red = TBRed.Value; }
@@ -207,7 +238,8 @@ namespace LaserGRBL.RasterConverter
 		private void CbThreshold_CheckedChanged(object sender, EventArgs e)
 		{ 
 			IP.UseThreshold = CbThreshold.Checked;
-			TbThreshold.Enabled = CbThreshold.Checked;
+			TbThreshold.Visible = CbThreshold.Checked;
+			LbThreshold.Visible = CbThreshold.Checked;
 		}
 
 		private void TbThreshold_ValueChanged(object sender, EventArgs e)
@@ -272,14 +304,16 @@ namespace LaserGRBL.RasterConverter
 		void RasterToLaserFormFormClosing(object sender, FormClosingEventArgs e)
 		{
 			IP.Suspend();
-			IP.Dispose();
 		}
 
 		void CbDirectionsSelectedIndexChanged(object sender, EventArgs e)
 		{ IP.LineDirection = (ImageProcessor.Direction)CbDirections.SelectedItem; }
 
 		void CbResizeSelectedIndexChanged(object sender, EventArgs e)
-		{ IP.Interpolation = (InterpolationMode)CbResize.SelectedItem; }
+		{ 
+			IP.Interpolation = (InterpolationMode)CbResize.SelectedItem;
+			PbOriginal.Image = IP.Original;
+		}
 
 	}
 }

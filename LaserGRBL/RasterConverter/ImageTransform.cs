@@ -52,18 +52,19 @@ namespace LaserGRBL.RasterConverter
 
 		public static Bitmap Threshold(Image img, float threshold, bool apply)
 		{
-			Bitmap bmp = new Bitmap(img);
+			Bitmap bmp = new Bitmap(img.Width, img.Height);
 
 			using (Graphics g = Graphics.FromImage(bmp))
 			{
+				g.Clear(Color.White); //Threshold is the final transformation 
+				g.DrawImage(img, 0,0); //so clear any transparent color and apply threshold
+				
 				// Create an ImageAttributes object, and set its color threshold.
 				ImageAttributes imageAttr = new ImageAttributes();
 				imageAttr.SetThreshold(threshold);
 
 				if (apply)
-					g.DrawImage(img, new Rectangle(0,0, bmp.Width, bmp.Height), 0,0, bmp.Width, bmp.Height,	GraphicsUnit.Pixel, imageAttr);
-				else
-					g.DrawImage(img, 0,0);
+					g.DrawImage(bmp, new Rectangle(0,0, bmp.Width, bmp.Height), 0,0, bmp.Width, bmp.Height,	GraphicsUnit.Pixel, imageAttr);
 			}
 			return bmp;
 		}
@@ -103,7 +104,8 @@ namespace LaserGRBL.RasterConverter
 		{
 			SimpleAverage = 0,
 			WeightAverage = 1,
-			OpticalCorrect = 2
+			OpticalCorrect = 2,
+			Custom = 3
 		}
 
 
@@ -113,10 +115,16 @@ namespace LaserGRBL.RasterConverter
 
 			// Apply selected grayscale formula
 			
-			float RedFactor = 0.333F; //Formula.SimpleAverage
-			float GreenFactor = 0.333F; //Formula.SimpleAverage
-			float BlueFactor = 0.333F; //Formula.SimpleAverage
+			float RedFactor = 0;
+			float GreenFactor = 0;
+			float BlueFactor = 0;
 			
+			if (formula == Formula.SimpleAverage)
+			{
+				RedFactor = 0.333F;
+				GreenFactor = 0.333F;
+				BlueFactor = 0.333F;
+			}
 			if (formula == Formula.WeightAverage)
 			{
 				RedFactor = 0.333F;
@@ -129,10 +137,16 @@ namespace LaserGRBL.RasterConverter
 				GreenFactor = 0.587F;
 				BlueFactor = 0.114F;				
             }
+			else if (formula == Formula.Custom)
+			{
+				RedFactor =	 0.333F * R;
+				GreenFactor = 0.333F * G;
+				BlueFactor = 0.333F * B;
+			}
 			
-			RedFactor =	 RedFactor * R * contrast;
-			GreenFactor = GreenFactor * G * contrast;
-			BlueFactor = BlueFactor * B * contrast;
+			RedFactor = RedFactor * contrast;
+			GreenFactor = GreenFactor * contrast;
+			BlueFactor = BlueFactor * contrast;
 			
 			cm = new ColorMatrix(new float[][] {
 				new float[] {RedFactor,RedFactor,RedFactor,0F,0F},
